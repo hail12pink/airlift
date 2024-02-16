@@ -39,7 +39,8 @@ func findGit() string {
 }
 
 const cookieDomain = `https://www.roblox.com/`
-const assetVersions = `https://api.roblox.com/assets/%d/versions?page=%d`
+const assetVersions = `develop.roblox.com/v1/assets/%d/saved-versions?cursor=%s`
+https://develop.roblox.com/v1/assets/4490046941/saved-versions?limit=10
 const assetVersion = `https://assetgame.roblox.com/Asset?versionId=%d`
 
 type AssetVersion struct {
@@ -133,14 +134,14 @@ func (client *Client) Login(authFile string) (err error) {
 	return nil
 }
 
-func (client *Client) GetAssetVersions(assetID int64, page int) (versions []AssetVersion, err error) {
+func (client *Client) GetAssetVersions(assetID int64, cursor string) (versions []AssetVersion, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("get versions of asset %d (page %d): %w", assetID, page, err)
 		}
 	}()
-	logf("getting page %d of asset %d\n", page, assetID)
-	url := fmt.Sprintf(assetVersions, assetID, page)
+	logf("getting page %s of asset %d\n", page, assetID)
+	url := fmt.Sprintf(assetVersions, assetID, cursor)
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
@@ -480,8 +481,11 @@ func main() {
 
 	var versions []AssetVersion
 	client := &Client{Client: &http.Client{}}
+
+	var cursor = "e"
+	
 	for page, authed := 1, false; ; {
-		v, err := client.GetAssetVersions(Options.AssetID, page)
+		v, err := client.GetAssetVersions(Options.AssetID, cursor)
 		if err != nil && !authed {
 			if status := StatusError(nil); errors.As(err, &status) && status.StatusCode() == 403 {
 				// Get without auth failed; retry with.
@@ -494,6 +498,9 @@ func main() {
 		if len(v) == 0 {
 			break
 		}
+		cursor = v.nextPageCursor
+		but.Log(cursor)
+		but.Log(v)
 		versions = append(versions, v...)
 		page++
 	}
