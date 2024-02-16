@@ -1,4 +1,4 @@
-module github.com/anaminus/airlift
+module github.com/hail12pink/airlift
 
 go 1.13
 
